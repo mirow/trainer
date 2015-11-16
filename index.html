@@ -4,177 +4,87 @@
     <title></title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
-
+    <style>
+        #bg {
+            width: 900px;
+            height: 425px;
+            position: relative;
+            top: -475px;
+            left: 50px;
+            z-index: -1;
+        }
+        #maximum {
+            height: 44px;
+            background-color: rgba(255,100,100,0.4);
+        }
+        #anaerobic {
+            height: 44px;
+            background-color: rgba(255,255,100,0.4);
+        }
+        #aerobic {
+            height: 42px;
+            background-color: rgba(100,255,100,0.4);
+        }
+        #fat_burning {
+            height: 44px;
+            background-color: rgba(150,255,150,0.4);
+        }
+        #warmup {
+            height: 43px;
+            background-color: rgba(200,255,200,0.4);
+        }
+        #rest {
+            height: 50%;
+            background-color: rgba(255,255,255,0.4);
+        }
+    </style>
     <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="js/lodash.min.js"></script>
+    <script src="js/angular.min.js"></script>
     <script src="http://goessner.net/download/prj/jsonxml/xml2json.js"></script>
     <script type="text/javascript" src="https://www.google.com/jsapi"></script>
     <script type="text/javascript">
+        if (typeof(Number.prototype.toRadians) === "undefined") {
+            Number.prototype.toRadians = function () {
+                return this * Math.PI / 180;
+            }
+        }
+
         google.load("visualization", "1", {packages: ["corechart"]});
-
-        function readSingleFile() {
-            //Retrieve the first (and only!) File from the FileList object
-            var f = document.getElementById('fileinput').files[0];
-
-            if (f) {
-                var r = new FileReader();
-                r.onload = function (e) {
-                    convertToJson(e.target.result);
-                };
-                r.readAsText(f);
-            } else {
-                alert("Failed to load file");
-            }
-        }
-
-        function drawChart(dataArray) {
-            var data = google.visualization.arrayToDataTable(dataArray);
-
-            var options = {
-                legend: 'none',
-                width: 1500,
-                height: 1000,
-                pointSize: 2
-            };
-            if ($('#chartType').val()=='1') {
-                options.title = 'Speed vs. Distance comparison';
-                options.vAxis = {title: 'Speed', minValue: 0, maxValue: 15};
-                options.hAxis = {title: 'Distance', minValue: 7};
-            } else if ($('#chartType').val()=='2') {
-                options.title = 'HR vs. Distance comparison';
-                options.vAxis = {title: 'HR', minValue: 0, maxValue: 200};
-                options.hAxis = {title: 'Distance'};
-            } else if ($('#chartType').val()=='3') {
-                options.title = 'HR vs Speed comparison';
-                options.vAxis = {title: 'HR', minValue: 0, maxValue: 200};
-                options.hAxis = {title: 'Speed', minValue: 7, maxValue: 15};
-            }
-
-            var chart = new google.visualization.ScatterChart(document.getElementById('chart_div'));
-
-            chart.draw(data, options);
-        }
-
-        function convertToJson(text) {
-            var oParser = new DOMParser();
-            var oDOM = oParser.parseFromString(text, "text/xml");
-            var jsonString = xml2json(oDOM, '');
-            var arr = JSON.parse(jsonString);
-            var id  = arr.TrainingCenterDatabase.Activities.Activity.Id;
-            var points = arr.TrainingCenterDatabase.Activities.Activity.Lap.Track;
-            var names = localStorage.getItem('names');
-            if (!names) {
-                names = {};
-            } else {
-                names = JSON.parse(names);
-            }
-            names[id] = id;
-            localStorage.setItem('names', JSON.stringify(names));
-            localStorage.setItem(id, JSON.stringify(points));
-            updateListing();
-        }
-
-        function updateListing() {
-            var names = localStorage.getItem('names');
-            if (!names) return;
-            names = JSON.parse(names);
-            $('.names').remove();
-            for (var key in names) {
-                $('#list').append('<span class="names">'+names[key]+'<button onclick="parseThis(\''+names[key]+'\')">View</button><br/></span>');
-
-            }
-        }
-
-        function parseThis(name) {
-            var arr = JSON.parse(localStorage.getItem(name));
-
-            var lastLon, lastLat, lastTime;
-            var totalDist = 0;
-            var totalTime = 0;
-            var grandTotalDist = 0;
-            var grandTotalTime = 0;
-            var hrSum = 0;
-            var pointCount = 0;
-            var chartType = $('#chartType').val();
-            var points;
-            if (chartType=='1') {
-                points  = [
-                    ['Distance', 'Speed']
-                ];
-            } else if (chartType=='2') {
-                points  = [
-                    ['Distance', 'HR']
-                ];
-            } else {
-                points  = [
-                    ['Speed', 'HR']
-                ];
-            }
-            var dist; var time;
-            var timeStep = $('#distance').val();
-            arr.Trackpoint.forEach(function (point) {
-                hrSum += parseInt(point.HeartRateBpm.Value);
-                pointCount++;
-
-                if (point.Position.LongitudeDegrees != lastLon || point.Position.LatitudeDegrees != lastLat) {
-                    if (lastLon) {
-                        var lonDiff = (point.Position.LongitudeDegrees - lastLon) * 53910; // get meters
-                        var latDiff = (point.Position.LatitudeDegrees - lastLat) * 111200; // get meters
-                        dist = Math.sqrt(lonDiff * lonDiff + latDiff * latDiff);
-                        time = (new Date(point.Time) - lastTime) / 1000;
-                    } else {
-                        dist = 0;
-                        time = 0;
-                    }
-                    totalDist += dist;
-                    totalTime += time;
-                    grandTotalDist += dist;
-                    grandTotalTime += time;
-                    lastLon = point.Position.LongitudeDegrees;
-                    lastLat = point.Position.LatitudeDegrees;
-                    lastTime = new Date(point.Time);
-                    if (totalDist > timeStep) {
-                        if (chartType=='1') {
-                            points.push([(grandTotalDist / 1000), (totalDist / 1000) / (totalTime / 3600)]);
-                        } else if (chartType=='2') {
-                            points.push([(grandTotalDist / 1000), hrSum / pointCount]);
-                        } else {
-                            points.push([(totalDist / 1000) / (totalTime / 3600), hrSum / pointCount]);
-                        }
-                        totalTime = 0;
-                        totalDist = 0;
-                        hrSum = 0;
-                        pointCount = 0;
-                    }
-                }
-            });
-            drawChart(points);
-        }
-        $(document).ready(function () {
-            updateListing();
-        });
-
     </script>
-    <style>
-    </style>
+    <script src="js/app.js"></script>
 </head>
-<body>
-<input type="file" id="fileinput"/>
-<button onclick="readSingleFile()">Read file</button>
-<br/>
-Files:<br/>
-<div id="list"></div>
-<select name="distance" id="distance">
-    <option value="50">50m</option>
-    <option value="100">100m</option>
-    <option value="250">250m</option>
-    <option value="500">500m</option>
-    <option value="1000">1000m</option>
-</select>
-<select name="type" id="chartType">
-    <option value="1">Speed/Distance</option>
-    <option value="2">HR/Distance</option>
-    <option value="3">HR/Speed</option>
-</select>
-<div id="chart_div"></div>
+<body ng-app="app">
+<div ng-controller="graphCtrl">
+    <input type="file" id="fileinput"/>
+    <button ng-click="readSingleFile()">Read file</button>
+    <br/>
+    Files:<br/>
+    <div ng-repeat="file in files">
+       {{ file }} <input type="checkbox" ng-model="selected[file]"> <button ng-click="showFile(file)">View</button>
+    </div>
+    <select ng-model="distance">
+        <option value="50">50m</option>
+        <option value="100">100m</option>
+        <option value="250">250m</option>
+        <option value="500">500m</option>
+        <option value="1000">1000m</option>
+    </select>
+    <select ng-model="chartType">
+        <option value="1">Speed/Distance</option>
+        <option value="2">HR/Distance</option>
+        <option value="3">HR/Speed</option>
+    </select>
+    <button ng-click="joinAndDraw()">Draw selected</button>
+    <div id="chart_div"></div>
+    <div id="bg">
+        <div id="maximum"></div>
+        <div id="anaerobic"></div>
+        <div id="aerobic"></div>
+        <div id="fat_burning"></div>
+        <div id="warmup"></div>
+        <div id="rest"></div>
+    </div>
+</div>
 </body>
